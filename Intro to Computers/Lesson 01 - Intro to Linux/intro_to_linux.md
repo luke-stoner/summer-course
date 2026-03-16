@@ -9,7 +9,7 @@
   - [Hands-On #2](#hands-on-2)
     - [Exercise 5: GREP - Search Text](#exercise-5-grep---search-text)
     - [Exercise 6: WC - Word/Line/Character Count](#exercise-6-wc---wordlinecharacter-count)
-    - [Exercise 7: SSH - Remote Access (Assumes you have SSH access to a server)](#exercise-7-ssh---remote-access-assumes-you-have-ssh-access-to-a-server)
+    - [Exercise 7: SSH - Remote Access](#exercise-7-ssh---remote-access)
     - [Exercise 8: Redirection Operators](#exercise-8-redirection-operators)
   - [Stretch Goals:](#stretch-goals)
 
@@ -103,11 +103,9 @@ These exercises are designed to help you practice using tools like `grep`, `wc`,
    
 ---
 
-### Exercise 7: SSH - Remote Access (Assumes you have SSH access to a server)
+### Exercise 7: SSH - Remote Access
 
-
-
-1. Connect to a remote server.
+1. Connect to the server that your instructor provided with the correct credentials.
    
 
 2. Run a remote command (e.g., list home directory files).
@@ -123,7 +121,7 @@ These exercises are designed to help you practice using tools like `grep`, `wc`,
 1. Redirect the output of `ls` into a file.
    
 
-2. Append output to an existing file.
+2. Append output to an existing file using echo.
    
 
 3. Use input redirection to provide data to a command.
