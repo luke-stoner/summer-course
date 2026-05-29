@@ -1,10 +1,8 @@
 """
-Autograder tests for Problem Set 4 — Problem 1
-Soldier Roster & Dispatch System
+Autograder tests for Problem Set 4 — Custom Classes & OOP
 
-Each test class maps to one required function. Tests run independently so
-students receive per-function feedback. Read the assertion messages — they
-describe exactly what is expected.
+Each test class tests either a custom class or a required function.
+Tests run independently so students receive per-component feedback.
 
 To run locally:
     pytest .github/python_tests/test_problem_set_4.py -v
@@ -39,19 +37,6 @@ def student():
 # ---------------------------------------------------------------------------
 # Sample data used across all tests
 # ---------------------------------------------------------------------------
-
-# Safe fixture: calls process_reports() and skips any dependent test with a
-# helpful message if the function hasn't been implemented yet (returns None).
-@pytest.fixture
-def roster_and_ranks(student):
-    result = student.process_reports(REPORTS)
-    if not (isinstance(result, tuple) and len(result) == 2):
-        pytest.skip(
-            "process_reports() did not return (roster, ranks) yet — implement that function first."
-        )
-    return result
-
-
 REPORTS = [
     "SANTOS | Private | Fitness:91 | Status:available",
     "KOWALSKI | Corporal | Fitness:74 | Status:deployed",
@@ -62,8 +47,51 @@ REPORTS = [
 ]
 
 EXPECTED_NAMES = {"Santos", "Kowalski", "Okafor", "Briggs", "Nakamura", "Reyes"}
-EXPECTED_AVAILABLE = ["Briggs", "Okafor", "Reyes", "Santos"]    # sorted
+EXPECTED_AVAILABLE = ["Briggs", "Okafor", "Reyes", "Santos"]  # sorted
 EXPECTED_RANKS = {"PRIVATE", "CORPORAL", "SERGEANT"}
+
+
+# ===========================================================================
+# Problem 1: Soldier class
+# ===========================================================================
+class TestSoldierClass:
+    """Tests for the Soldier class"""
+
+    def test_class_exists(self, student):
+        assert hasattr(student, "Soldier"), "Soldier class not found in your file."
+
+    def test_can_instantiate(self, student):
+        soldier = student.Soldier("Test", "PRIVATE", 75, False)
+        assert soldier is not None, "Could not create a Soldier instance."
+
+    def test_has_required_attributes(self, student):
+        soldier = student.Soldier("Santos", "PRIVATE", 91, False)
+        assert hasattr(soldier, "name"), "Soldier must have a 'name' attribute."
+        assert hasattr(soldier, "rank"), "Soldier must have a 'rank' attribute."
+        assert hasattr(soldier, "fitness"), "Soldier must have a 'fitness' attribute."
+        assert hasattr(soldier, "deployed"), "Soldier must have a 'deployed' attribute."
+
+    def test_attributes_stored_correctly(self, student):
+        soldier = student.Soldier("Santos", "PRIVATE", 91, False)
+        assert soldier.name == "Santos"
+        assert soldier.rank == "PRIVATE"
+        assert soldier.fitness == 91
+        assert soldier.deployed is False
+
+    def test_dispatch_method_exists(self, student):
+        soldier = student.Soldier("Santos", "PRIVATE", 91, False)
+        assert hasattr(soldier, "dispatch"), "Soldier must have a 'dispatch()' method."
+
+    def test_dispatch_method_sets_deployed(self, student):
+        soldier = student.Soldier("Santos", "PRIVATE", 91, False)
+        soldier.dispatch()
+        assert soldier.deployed is True, "dispatch() should set deployed to True."
+
+    def test_str_method_exists(self, student):
+        soldier = student.Soldier("Santos", "PRIVATE", 91, False)
+        result = str(soldier)
+        assert isinstance(result, str), "__str__() must return a string."
+        assert len(result) > 0, "__str__() should return a non-empty string."
 
 
 # ===========================================================================
@@ -83,15 +111,15 @@ class TestProcessReports:
             "Example:  return roster, ranks"
         )
 
-    def test_roster_is_dict(self, roster_and_ranks):
-        roster, _ = roster_and_ranks
+    def test_roster_is_dict(self, student):
+        roster, _ = student.process_reports(REPORTS)
         assert isinstance(roster, dict), (
             "The first return value of process_reports() must be a dictionary.\n"
-            "Each key is a soldier's name; each value is a dictionary of their details."
+            "Each key is a soldier's name; each value is a Soldier object."
         )
 
-    def test_roster_has_all_soldiers(self, roster_and_ranks):
-        roster, _ = roster_and_ranks
+    def test_roster_has_all_soldiers(self, student):
+        roster, _ = student.process_reports(REPORTS)
         missing = EXPECTED_NAMES - set(roster.keys())
         extra = set(roster.keys()) - EXPECTED_NAMES
         assert not missing and not extra, (
@@ -101,83 +129,39 @@ class TestProcessReports:
             f"  Tip: use .title() on the name field from each report string."
         )
 
-    def test_roster_entry_has_required_keys(self, roster_and_ranks):
-        roster, _ = roster_and_ranks
-        required = {"rank", "fitness", "deployed"}
-        for name, info in roster.items():
-            missing_keys = required - set(info.keys())
-            assert not missing_keys, (
-                f"The roster entry for '{name}' is missing key(s): {missing_keys}.\n"
-                f"Each entry must have exactly these keys: 'rank', 'fitness', 'deployed'."
+    def test_roster_values_are_soldier_objects(self, student):
+        roster, _ = student.process_reports(REPORTS)
+        for name, soldier in roster.items():
+            assert hasattr(soldier, "name") and hasattr(soldier, "rank"), (
+                f"Roster values must be Soldier objects.\n"
+                f"  '{name}' has value of type {type(soldier).__name__}"
             )
 
-    def test_ranks_are_uppercase(self, roster_and_ranks):
-        roster, _ = roster_and_ranks
-        for name, info in roster.items():
-            rank = info.get("rank", "")
-            assert rank == rank.upper(), (
-                f"Ranks must be stored in UPPERCASE.\n"
-                f"  '{name}' has rank '{rank}' — expected '{rank.upper()}'.\n"
-                f"  Tip: use .upper() on the rank field."
-            )
+    def test_soldier_attributes_correct(self, student):
+        roster, _ = student.process_reports(REPORTS)
+        santos = roster.get("Santos")
+        assert santos.rank == "PRIVATE", f"Santos rank should be PRIVATE, got {santos.rank}"
+        assert santos.fitness == 91, f"Santos fitness should be 91, got {santos.fitness}"
+        assert santos.deployed is False, f"Santos deployed should be False, got {santos.deployed}"
 
-    def test_fitness_is_integer(self, roster_and_ranks):
-        roster, _ = roster_and_ranks
-        for name, info in roster.items():
-            assert isinstance(info.get("fitness"), int), (
-                f"'fitness' must be stored as an integer, not a string.\n"
-                f"  '{name}' has fitness value {repr(info.get('fitness'))}.\n"
-                f"  Tip: wrap the parsed value in int()."
-            )
+    def test_deployed_values_correct(self, student):
+        roster, _ = student.process_reports(REPORTS)
+        assert roster["Kowalski"].deployed is True, "Kowalski should be deployed."
+        assert roster["Nakamura"].deployed is True, "Nakamura should be deployed."
+        assert roster["Santos"].deployed is False, "Santos should not be deployed."
+        assert roster["Briggs"].deployed is False, "Briggs should not be deployed."
 
-    def test_fitness_values_correct(self, roster_and_ranks):
-        expected = {
-            "Santos": 91, "Kowalski": 74, "Okafor": 88,
-            "Briggs": 55, "Nakamura": 82, "Reyes": 79,
-        }
-        roster, _ = roster_and_ranks
-        for name, expected_fitness in expected.items():
-            actual = roster.get(name, {}).get("fitness")
-            assert actual == expected_fitness, (
-                f"Fitness for '{name}' should be {expected_fitness}, got {repr(actual)}."
-            )
-
-    def test_deployed_is_boolean(self, roster_and_ranks):
-        roster, _ = roster_and_ranks
-        for name, info in roster.items():
-            assert isinstance(info.get("deployed"), bool), (
-                f"'deployed' must be a boolean (True or False), not a string.\n"
-                f"  '{name}' has deployed={repr(info.get('deployed'))}.\n"
-                f"  Tip: use the expression  status_field == 'deployed'  which evaluates to True/False."
-            )
-
-    def test_deployed_values_correct(self, roster_and_ranks):
-        roster, _ = roster_and_ranks
-        assert roster["Kowalski"]["deployed"] is True, (
-            "Kowalski's report says 'Status:deployed', so deployed should be True."
-        )
-        assert roster["Nakamura"]["deployed"] is True, (
-            "Nakamura's report says 'Status:deployed', so deployed should be True."
-        )
-        assert roster["Santos"]["deployed"] is False, (
-            "Santos's report says 'Status:available', so deployed should be False."
-        )
-        assert roster["Briggs"]["deployed"] is False, (
-            "Briggs's report says 'Status:available', so deployed should be False."
-        )
-
-    def test_ranks_return_is_set(self, roster_and_ranks):
-        _, ranks = roster_and_ranks
+    def test_ranks_return_is_set(self, student):
+        _, ranks = student.process_reports(REPORTS)
         assert isinstance(ranks, set), (
             "The second return value of process_reports() must be a set.\n"
             "A set naturally stores only unique values — use ranks.add(rank) inside the loop."
         )
 
-    def test_ranks_values_correct(self, roster_and_ranks):
-        _, ranks = roster_and_ranks
+    def test_ranks_values_correct(self, student):
+        _, ranks = student.process_reports(REPORTS)
         assert ranks == EXPECTED_RANKS, (
-            f"Unique ranks (uppercase) should be {EXPECTED_RANKS}.\n"
-            f"Got: {ranks}"
+            f"Unique ranks (uppercase) should be {EXPECTED_RANKS}.\n" f"Got: {ranks}"
         )
 
 
@@ -190,8 +174,8 @@ class TestShowAvailable:
     def test_function_exists(self, student):
         assert_has_function(student, "show_available")
 
-    def test_available_soldiers_are_printed(self, student, roster_and_ranks, capsys):
-        roster, _ = roster_and_ranks
+    def test_available_soldiers_are_printed(self, student, capsys):
+        roster, _ = student.process_reports(REPORTS)
         student.show_available(roster)
         output = capsys.readouterr().out
         for name in EXPECTED_AVAILABLE:
@@ -200,8 +184,8 @@ class TestShowAvailable:
                 f"Your output was:\n{output}"
             )
 
-    def test_deployed_soldiers_not_printed(self, student, roster_and_ranks, capsys):
-        roster, _ = roster_and_ranks
+    def test_deployed_soldiers_not_printed(self, student, capsys):
+        roster, _ = student.process_reports(REPORTS)
         student.show_available(roster)
         output = capsys.readouterr().out
         for name in ("Kowalski", "Nakamura"):
@@ -210,8 +194,8 @@ class TestShowAvailable:
                 f"Your output was:\n{output}"
             )
 
-    def test_output_is_alphabetically_sorted(self, student, roster_and_ranks, capsys):
-        roster, _ = roster_and_ranks
+    def test_output_is_alphabetically_sorted(self, student, capsys):
+        roster, _ = student.process_reports(REPORTS)
         student.show_available(roster)
         output = capsys.readouterr().out
         positions = {name: output.find(name) for name in EXPECTED_AVAILABLE}
@@ -233,27 +217,24 @@ class TestDispatch:
     def test_function_exists(self, student):
         assert_has_function(student, "dispatch")
 
-    def test_dispatches_available_soldier(self, student, roster_and_ranks):
-        roster, _ = roster_and_ranks
-        roster = copy.deepcopy(roster)   # isolate mutations between tests
-        assert roster["Santos"]["deployed"] is False, "Test setup: Santos should start as not deployed."
+    def test_dispatches_available_soldier(self, student):
+        roster, _ = student.process_reports(REPORTS)
+        assert roster["Santos"].deployed is False, "Test setup: Santos should start as not deployed."
         student.dispatch(roster, "Santos")
-        assert roster["Santos"]["deployed"] is True, (
-            "After calling dispatch(roster, 'Santos'), roster['Santos']['deployed'] should be True.\n"
+        assert roster["Santos"].deployed is True, (
+            "After calling dispatch(roster, 'Santos'), Santos.deployed should be True.\n"
             "Santos was available, so set deployed = True."
         )
 
-    def test_dispatch_does_not_change_already_deployed(self, student, roster_and_ranks):
-        roster, _ = roster_and_ranks
-        roster = copy.deepcopy(roster)
+    def test_dispatch_does_not_change_already_deployed(self, student):
+        roster, _ = student.process_reports(REPORTS)
         student.dispatch(roster, "Kowalski")
-        assert roster["Kowalski"]["deployed"] is True, (
+        assert roster["Kowalski"].deployed is True, (
             "Kowalski was already deployed — their deployed value should remain True after dispatch()."
         )
 
-    def test_dispatch_already_deployed_prints_message(self, student, roster_and_ranks, capsys):
-        roster, _ = roster_and_ranks
-        roster = copy.deepcopy(roster)
+    def test_dispatch_already_deployed_prints_message(self, student, capsys):
+        roster, _ = student.process_reports(REPORTS)
         student.dispatch(roster, "Kowalski")
         output = capsys.readouterr().out.lower()
         assert "already" in output or "deployed" in output, (
@@ -261,9 +242,8 @@ class TestDispatch:
             "Example: 'Kowalski is already deployed.'"
         )
 
-    def test_dispatch_not_found_prints_message(self, student, roster_and_ranks, capsys):
-        roster, _ = roster_and_ranks
-        roster = copy.deepcopy(roster)
+    def test_dispatch_not_found_prints_message(self, student, capsys):
+        roster, _ = student.process_reports(REPORTS)
         student.dispatch(roster, "Nobody")
         output = capsys.readouterr().out.lower()
         assert "not found" in output or "nobody" in output, (
@@ -271,11 +251,10 @@ class TestDispatch:
             "Example: 'Nobody not found in roster.'"
         )
 
-    def test_dispatch_case_insensitive_name(self, student, roster_and_ranks):
-        roster, _ = roster_and_ranks
-        roster = copy.deepcopy(roster)
-        student.dispatch(roster, "santos")   # all-lowercase input
-        assert roster["Santos"]["deployed"] is True, (
+    def test_dispatch_case_insensitive_name(self, student):
+        roster, _ = student.process_reports(REPORTS)
+        student.dispatch(roster, "santos")  # all-lowercase input
+        assert roster["Santos"].deployed is True, (
             "dispatch() should work regardless of how the caller capitalises the name.\n"
             "Tip: use name.title() inside dispatch() to normalise the input."
         )
@@ -291,15 +270,15 @@ class TestFitnessReport:
     def test_function_exists(self, student):
         assert_has_function(student, "fitness_report")
 
-    def test_returns_dict(self, student, roster_and_ranks):
-        roster, _ = roster_and_ranks
+    def test_returns_dict(self, student):
+        roster, _ = student.process_reports(REPORTS)
         result = student.fitness_report(roster)
         assert isinstance(result, dict), (
             "fitness_report() must return a dictionary with keys 'high', 'medium', and 'low'."
         )
 
-    def test_has_required_band_keys(self, student, roster_and_ranks):
-        roster, _ = roster_and_ranks
+    def test_has_required_band_keys(self, student):
+        roster, _ = student.process_reports(REPORTS)
         result = student.fitness_report(roster)
         for key in ("high", "medium", "low"):
             assert key in result, (
@@ -307,32 +286,31 @@ class TestFitnessReport:
                 f"Your result had keys: {set(result.keys())}"
             )
 
-    def test_high_band(self, student, roster_and_ranks):
-        roster, _ = roster_and_ranks
+    def test_high_band(self, student):
+        roster, _ = student.process_reports(REPORTS)
         result = student.fitness_report(roster)
         assert set(result["high"]) == {"Santos", "Okafor", "Nakamura"}, (
             "High band (fitness >= 80) should contain Santos (91), Okafor (88), Nakamura (82).\n"
             f"Got: {result['high']}"
         )
 
-    def test_medium_band(self, student, roster_and_ranks):
-        roster, _ = roster_and_ranks
+    def test_medium_band(self, student):
+        roster, _ = student.process_reports(REPORTS)
         result = student.fitness_report(roster)
         assert set(result["medium"]) == {"Kowalski", "Reyes"}, (
             "Medium band (60–79) should contain Kowalski (74) and Reyes (79).\n"
             f"Got: {result['medium']}"
         )
 
-    def test_low_band(self, student, roster_and_ranks):
-        roster, _ = roster_and_ranks
+    def test_low_band(self, student):
+        roster, _ = student.process_reports(REPORTS)
         result = student.fitness_report(roster)
         assert set(result["low"]) == {"Briggs"}, (
-            "Low band (< 60) should contain only Briggs (55).\n"
-            f"Got: {result['low']}"
+            "Low band (< 60) should contain only Briggs (55).\n" f"Got: {result['low']}"
         )
 
-    def test_bands_are_alphabetically_sorted(self, student, roster_and_ranks):
-        roster, _ = roster_and_ranks
+    def test_bands_are_alphabetically_sorted(self, student):
+        roster, _ = student.process_reports(REPORTS)
         result = student.fitness_report(roster)
         for band in ("high", "medium", "low"):
             names = result[band]
@@ -343,134 +321,147 @@ class TestFitnessReport:
             )
 
 
-# ---------------------------------------------------------------------------
-# Problem 2 shared data
-# ---------------------------------------------------------------------------
-
-RECIPES = {
-    "omelette":       ["eggs", "butter", "salt", "pepper", "cheese"],
-    "pancakes":       ["flour", "eggs", "milk", "butter", "sugar", "salt"],
-    "tomato pasta":   ["pasta", "tomatoes", "garlic", "olive oil", "salt", "pepper"],
+# ===========================================================================
+# Problem 2: Recipe class
+# ===========================================================================
+RECIPE_DATA = {
+    "omelette": ["eggs", "butter", "salt", "pepper", "cheese"],
+    "pancakes": ["flour", "eggs", "milk", "butter", "sugar", "salt"],
+    "tomato pasta": ["pasta", "tomatoes", "garlic", "olive oil", "salt", "pepper"],
     "grilled cheese": ["bread", "cheese", "butter"],
 }
 
-PANTRY = {"eggs", "butter", "salt", "pepper", "cheese", "milk", "bread", "garlic"}
+PANTRY_ITEMS = ["eggs", "butter", "salt", "pepper", "cheese", "milk", "bread", "garlic"]
+
+
+class TestRecipeClass:
+    """Tests for the Recipe class"""
+
+    def test_class_exists(self, student):
+        assert hasattr(student, "Recipe"), "Recipe class not found in your file."
+
+    def test_can_instantiate(self, student):
+        recipe = student.Recipe("test", ["eggs", "milk"])
+        assert recipe is not None, "Could not create a Recipe instance."
+
+    def test_has_required_attributes(self, student):
+        recipe = student.Recipe("omelette", ["eggs", "butter"])
+        assert hasattr(recipe, "name"), "Recipe must have a 'name' attribute."
+        assert hasattr(recipe, "ingredients"), "Recipe must have an 'ingredients' attribute."
+
+    def test_can_make_method_exists(self, student):
+        recipe = student.Recipe("test", ["eggs"])
+        assert hasattr(recipe, "can_make"), "Recipe must have a 'can_make()' method."
+
+    def test_can_make_returns_true_when_available(self, student):
+        recipe = student.Recipe("omelette", RECIPE_DATA["omelette"])
+        pantry_set = set(PANTRY_ITEMS)
+        result = recipe.can_make(pantry_set)
+        assert result is True, "can_make() should return True when all ingredients are available."
+
+    def test_can_make_returns_false_when_missing(self, student):
+        recipe = student.Recipe("pancakes", RECIPE_DATA["pancakes"])
+        pantry_set = set(PANTRY_ITEMS)
+        result = recipe.can_make(pantry_set)
+        assert result is False, "can_make() should return False when ingredients are missing."
+
+    def test_missing_ingredients_method_exists(self, student):
+        recipe = student.Recipe("test", ["eggs"])
+        assert hasattr(
+            recipe, "missing_ingredients"
+        ), "Recipe must have a 'missing_ingredients()' method."
+
+    def test_missing_ingredients_returns_list(self, student):
+        recipe = student.Recipe("pancakes", RECIPE_DATA["pancakes"])
+        pantry_set = set(PANTRY_ITEMS)
+        result = recipe.missing_ingredients(pantry_set)
+        assert isinstance(result, list), "missing_ingredients() must return a list."
+
+    def test_missing_ingredients_correct(self, student):
+        recipe = student.Recipe("pancakes", RECIPE_DATA["pancakes"])
+        pantry_set = set(PANTRY_ITEMS)
+        result = recipe.missing_ingredients(pantry_set)
+        assert set(result) == {
+            "flour",
+            "sugar",
+        }, f"Missing ingredients for pancakes should be flour and sugar, got {result}"
+
+    def test_missing_ingredients_sorted(self, student):
+        recipe = student.Recipe("pancakes", RECIPE_DATA["pancakes"])
+        pantry_set = set(PANTRY_ITEMS)
+        result = recipe.missing_ingredients(pantry_set)
+        assert result == sorted(result), "missing_ingredients() must return a sorted list."
 
 
 # ===========================================================================
-# can_make()
+# Pantry class
 # ===========================================================================
-class TestCanMake:
-    """Tests for can_make(recipe_ingredients, pantry_set) -> bool"""
+class TestPantryClass:
+    """Tests for the Pantry class"""
+
+    def test_class_exists(self, student):
+        assert hasattr(student, "Pantry"), "Pantry class not found in your file."
+
+    def test_can_instantiate(self, student):
+        pantry = student.Pantry(["eggs", "milk"])
+        assert pantry is not None, "Could not create a Pantry instance."
+
+    def test_has_method_exists(self, student):
+        pantry = student.Pantry(PANTRY_ITEMS)
+        assert hasattr(pantry, "has"), "Pantry must have a 'has()' method."
+
+    def test_has_method_works(self, student):
+        pantry = student.Pantry(PANTRY_ITEMS)
+        assert pantry.has("eggs") is True, "Pantry.has('eggs') should return True."
+        assert pantry.has("flour") is False, "Pantry.has('flour') should return False."
+
+    def test_add_ingredients_method_exists(self, student):
+        pantry = student.Pantry(PANTRY_ITEMS)
+        assert hasattr(
+            pantry, "add_ingredients"
+        ), "Pantry must have an 'add_ingredients()' method."
+
+    def test_add_ingredients_works(self, student):
+        pantry = student.Pantry(list(PANTRY_ITEMS))
+        pantry.add_ingredients(["flour", "sugar"])
+        assert pantry.has("flour") is True, "After adding flour, pantry.has('flour') should be True."
+        assert pantry.has("sugar") is True, "After adding sugar, pantry.has('sugar') should be True."
+
+    def test_get_items_method_exists(self, student):
+        pantry = student.Pantry(PANTRY_ITEMS)
+        assert hasattr(pantry, "get_items"), "Pantry must have a 'get_items()' method."
+
+    def test_get_items_returns_set(self, student):
+        pantry = student.Pantry(PANTRY_ITEMS)
+        result = pantry.get_items()
+        assert isinstance(result, set), "get_items() must return a set."
+
+
+# ===========================================================================
+# create_recipes()
+# ===========================================================================
+class TestCreateRecipes:
+    """Tests for create_recipes(recipe_data) -> list[Recipe]"""
 
     def test_function_exists(self, student):
-        assert_has_function(student, "can_make")
-
-    def test_returns_true_when_all_ingredients_present(self, student):
-        result = student.can_make(RECIPES["omelette"], PANTRY)
-        assert result is True, (
-            "can_make() should return True for 'omelette' — all ingredients are in the pantry.\n"
-            f"  Recipe    : {RECIPES['omelette']}\n"
-            f"  Pantry    : {PANTRY}\n"
-            f"  Your result: {result}"
-        )
-
-    def test_returns_true_for_grilled_cheese(self, student):
-        result = student.can_make(RECIPES["grilled cheese"], PANTRY)
-        assert result is True, (
-            "can_make() should return True for 'grilled cheese' — bread, cheese, and butter are all in the pantry.\n"
-            f"  Your result: {result}"
-        )
-
-    def test_returns_false_when_ingredients_missing(self, student):
-        result = student.can_make(RECIPES["pancakes"], PANTRY)
-        assert result is False, (
-            "can_make() should return False for 'pancakes' — flour and sugar are not in the pantry.\n"
-            f"  Recipe    : {RECIPES['pancakes']}\n"
-            f"  Pantry    : {PANTRY}\n"
-            f"  Your result: {result}"
-        )
-
-    def test_returns_false_for_tomato_pasta(self, student):
-        result = student.can_make(RECIPES["tomato pasta"], PANTRY)
-        assert result is False, (
-            "can_make() should return False for 'tomato pasta' — pasta, tomatoes, and olive oil are missing.\n"
-            f"  Your result: {result}"
-        )
-
-    def test_returns_bool_not_truthy(self, student):
-        result = student.can_make(RECIPES["omelette"], PANTRY)
-        assert isinstance(result, bool), (
-            f"can_make() must return a bool (True or False), not {type(result).__name__}.\n"
-            "Your loop should end with  return True  and return False on a miss."
-        )
-
-    def test_empty_recipe_always_makeable(self, student):
-        result = student.can_make([], PANTRY)
-        assert result is True, (
-            "can_make() with an empty ingredient list should return True — nothing is missing.\n"
-            f"  Your result: {result}"
-        )
-
-    def test_expanded_pantry_makes_pancakes_possible(self, student):
-        bigger_pantry = PANTRY | {"flour", "sugar"}
-        result = student.can_make(RECIPES["pancakes"], bigger_pantry)
-        assert result is True, (
-            "With flour and sugar added to the pantry, can_make() should return True for 'pancakes'.\n"
-            f"  Your result: {result}"
-        )
-
-
-# ===========================================================================
-# missing_ingredients()
-# ===========================================================================
-class TestMissingIngredients:
-    """Tests for missing_ingredients(recipe_ingredients, pantry_set) -> list[str]"""
-
-    def test_function_exists(self, student):
-        assert_has_function(student, "missing_ingredients")
+        assert_has_function(student, "create_recipes")
 
     def test_returns_list(self, student):
-        result = student.missing_ingredients(RECIPES["pancakes"], PANTRY)
-        assert isinstance(result, list), (
-            f"missing_ingredients() must return a list, got {type(result).__name__}."
-        )
+        result = student.create_recipes(RECIPE_DATA)
+        assert isinstance(result, list), "create_recipes() must return a list."
 
-    def test_correct_missing_for_pancakes(self, student):
-        result = student.missing_ingredients(RECIPES["pancakes"], PANTRY)
-        assert set(result) == {"flour", "sugar"}, (
-            "For 'pancakes', the missing ingredients are flour and sugar.\n"
-            f"  Your result: {result}"
-        )
+    def test_list_contains_recipe_objects(self, student):
+        result = student.create_recipes(RECIPE_DATA)
+        for item in result:
+            assert hasattr(item, "name") and hasattr(item, "ingredients"), (
+                f"create_recipes() must return a list of Recipe objects.\n"
+                f"Found item of type {type(item).__name__}"
+            )
 
-    def test_correct_missing_for_tomato_pasta(self, student):
-        result = student.missing_ingredients(RECIPES["tomato pasta"], PANTRY)
-        assert set(result) == {"pasta", "tomatoes", "olive oil"}, (
-            "For 'tomato pasta', the missing ingredients are pasta, tomatoes, and olive oil.\n"
-            f"  Your result: {result}"
-        )
-
-    def test_result_is_sorted(self, student):
-        result = student.missing_ingredients(RECIPES["tomato pasta"], PANTRY)
-        assert result == sorted(result), (
-            "missing_ingredients() must return a sorted list.\n"
-            f"  Your result  : {result}\n"
-            f"  Sorted result: {sorted(result)}\n"
-            "Tip: call .sort() on the list before returning, or use sorted()."
-        )
-
-    def test_empty_when_all_present(self, student):
-        result = student.missing_ingredients(RECIPES["omelette"], PANTRY)
-        assert result == [], (
-            "missing_ingredients() should return an empty list when all ingredients are in the pantry.\n"
-            f"  Your result: {result}"
-        )
-
-    def test_empty_recipe_returns_empty_list(self, student):
-        result = student.missing_ingredients([], PANTRY)
-        assert result == [], (
-            "missing_ingredients() with an empty ingredient list should return [].\n"
-            f"  Your result: {result}"
+    def test_correct_number_of_recipes(self, student):
+        result = student.create_recipes(RECIPE_DATA)
+        assert len(result) == len(RECIPE_DATA), (
+            f"create_recipes() should return {len(RECIPE_DATA)} Recipe objects, got {len(result)}"
         )
 
 
@@ -478,13 +469,15 @@ class TestMissingIngredients:
 # check_recipes()
 # ===========================================================================
 class TestCheckRecipes:
-    """Tests for check_recipes(recipes, pantry_set) -> None  (prints output)"""
+    """Tests for check_recipes(recipes, pantry) -> None  (prints output)"""
 
     def test_function_exists(self, student):
         assert_has_function(student, "check_recipes")
 
     def test_makeable_recipes_shown(self, student, capsys):
-        student.check_recipes(RECIPES, PANTRY)
+        recipes = student.create_recipes(RECIPE_DATA)
+        pantry = student.Pantry(PANTRY_ITEMS)
+        student.check_recipes(recipes, pantry)
         output = capsys.readouterr().out
         assert "omelette" in output.lower(), (
             "check_recipes() output should mention 'omelette' (it can be made).\n"
@@ -496,7 +489,9 @@ class TestCheckRecipes:
         )
 
     def test_missing_recipes_shown(self, student, capsys):
-        student.check_recipes(RECIPES, PANTRY)
+        recipes = student.create_recipes(RECIPE_DATA)
+        pantry = student.Pantry(PANTRY_ITEMS)
+        student.check_recipes(recipes, pantry)
         output = capsys.readouterr().out
         assert "pancakes" in output.lower(), (
             "check_recipes() output should mention 'pancakes' (ingredients are missing).\n"
@@ -508,7 +503,9 @@ class TestCheckRecipes:
         )
 
     def test_missing_ingredients_appear_in_output(self, student, capsys):
-        student.check_recipes(RECIPES, PANTRY)
+        recipes = student.create_recipes(RECIPE_DATA)
+        pantry = student.Pantry(PANTRY_ITEMS)
+        student.check_recipes(recipes, pantry)
         output = capsys.readouterr().out
         for ingredient in ("flour", "sugar", "pasta", "tomatoes"):
             assert ingredient in output, (
@@ -517,7 +514,9 @@ class TestCheckRecipes:
             )
 
     def test_unique_ingredient_count_printed(self, student, capsys):
-        student.check_recipes(RECIPES, PANTRY)
+        recipes = student.create_recipes(RECIPE_DATA)
+        pantry = student.Pantry(PANTRY_ITEMS)
+        student.check_recipes(recipes, pantry)
         output = capsys.readouterr().out
         assert "13" in output, (
             "check_recipes() should print the count of unique ingredients across all recipes.\n"
@@ -527,40 +526,241 @@ class TestCheckRecipes:
 
 
 # ===========================================================================
-# add_ingredients()   [Challenge]
+# Problem 3: LyricAnalyzer class
 # ===========================================================================
-@pytest.mark.challenge
-class TestAddIngredients:
-    """Tests for add_ingredients(pantry_set, extra_ingredients) -> set[str]"""
+SAMPLE_LYRICS = """
+we will we will rock you
+we will we will rock you
+buddy youre a boy make a big noise
+playing in the street gonna be a big man someday
+you got mud on your face you big disgrace
+kicking your can all over the place singing
+we will we will rock you
+"""
+
+
+class TestLyricAnalyzerClass:
+    """Tests for the LyricAnalyzer class"""
+
+    def test_class_exists(self, student):
+        assert hasattr(student, "LyricAnalyzer"), "LyricAnalyzer class not found in your file."
+
+    def test_can_instantiate(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        assert analyzer is not None, "Could not create a LyricAnalyzer instance."
+
+    def test_has_words_attribute(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        assert hasattr(analyzer, "words"), "LyricAnalyzer must have a 'words' attribute."
+        assert isinstance(analyzer.words, list), "'words' should be a list."
+
+    def test_count_words_method_exists(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        assert hasattr(analyzer, "count_words"), "LyricAnalyzer must have a 'count_words()' method."
+
+    def test_count_words_returns_dict(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        result = analyzer.count_words()
+        assert isinstance(result, dict), "count_words() must return a dictionary."
+
+    def test_count_words_correct(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        result = analyzer.count_words()
+        # "we" and "will" appear 6 times each in the sample
+        assert result.get("we") == 6, "The word 'we' appears 6 times in the sample lyrics."
+        assert result.get("will") == 6, "The word 'will' appears 6 times in the sample lyrics."
+
+    def test_unique_word_count_method_exists(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        assert hasattr(
+            analyzer, "unique_word_count"
+        ), "LyricAnalyzer must have a 'unique_word_count()' method."
+
+    def test_unique_word_count_returns_int(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        result = analyzer.unique_word_count()
+        assert isinstance(result, int), "unique_word_count() must return an integer."
+
+    def test_most_common_word_method_exists(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        assert hasattr(
+            analyzer, "most_common_word"
+        ), "LyricAnalyzer must have a 'most_common_word()' method."
+
+    def test_most_common_word_returns_tuple(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        result = analyzer.most_common_word()
+        assert isinstance(result, tuple) and len(result) == 2, (
+            "most_common_word() must return a tuple of (word, count)."
+        )
+
+    def test_print_report_method_exists(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        assert hasattr(analyzer, "print_report"), "LyricAnalyzer must have a 'print_report()' method."
+
+    def test_print_report_produces_output(self, student, capsys):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        analyzer.print_report()
+        output = capsys.readouterr().out
+        assert len(output) > 0, "print_report() should produce some output."
+        assert "we" in output.lower(), "print_report() should include word counts."
+
+    def test_filter_stopwords_method_exists(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        assert hasattr(
+            analyzer, "filter_stopwords"
+        ), "LyricAnalyzer must have a 'filter_stopwords()' method."
+
+    def test_filter_stopwords_works(self, student):
+        analyzer = student.LyricAnalyzer(SAMPLE_LYRICS)
+        stop_words = {"we", "you", "your"}
+        original_count = len(analyzer.words)
+        analyzer.filter_stopwords(stop_words)
+        new_count = len(analyzer.words)
+        assert new_count < original_count, (
+            "After filtering stopwords, the word list should be shorter."
+        )
+
+
+# ===========================================================================
+# Problem 4: Animal class
+# ===========================================================================
+RAW_DATA = [
+    "Simba, lion, 7, Africa",
+    "Pebbles, penguin, 3, Antarctica",
+    "Kovu, lion, 4, Africa",
+    "Bubbles, dolphin, 12, Ocean",
+    "Mango, parrot, 6, South America",
+    "Nala, lion, 5, Africa",
+    "Splash, dolphin, 8, Ocean",
+    "Crackers, parrot, 2, South America",
+]
+
+
+class TestAnimalClass:
+    """Tests for the Animal class"""
+
+    def test_class_exists(self, student):
+        assert hasattr(student, "Animal"), "Animal class not found in your file."
+
+    def test_can_instantiate(self, student):
+        animal = student.Animal("Test", "dog", 5, "USA")
+        assert animal is not None, "Could not create an Animal instance."
+
+    def test_has_required_attributes(self, student):
+        animal = student.Animal("Simba", "lion", 7, "Africa")
+        assert hasattr(animal, "name"), "Animal must have a 'name' attribute."
+        assert hasattr(animal, "species"), "Animal must have a 'species' attribute."
+        assert hasattr(animal, "age"), "Animal must have an 'age' attribute."
+        assert hasattr(animal, "origin"), "Animal must have an 'origin' attribute."
+
+    def test_attributes_stored_correctly(self, student):
+        animal = student.Animal("Simba", "lion", 7, "Africa")
+        assert animal.name == "Simba"
+        assert animal.species == "lion"
+        assert animal.age == 7
+        assert animal.origin == "Africa"
+
+    def test_str_method_exists(self, student):
+        animal = student.Animal("Simba", "lion", 7, "Africa")
+        result = str(animal)
+        assert isinstance(result, str), "__str__() must return a string."
+        assert len(result) > 0, "__str__() should return a non-empty string."
+
+    def test_get_info_method_exists(self, student):
+        animal = student.Animal("Simba", "lion", 7, "Africa")
+        assert hasattr(animal, "get_info"), "Animal must have a 'get_info()' method."
+
+    def test_get_info_produces_output(self, student, capsys):
+        animal = student.Animal("Simba", "lion", 7, "Africa")
+        animal.get_info()
+        output = capsys.readouterr().out
+        assert len(output) > 0, "get_info() should produce some output."
+        assert "Simba" in output, "get_info() should display the animal's name."
+
+
+# ===========================================================================
+# build_registry()
+# ===========================================================================
+class TestBuildRegistry:
+    """Tests for build_registry(raw_data) -> dict[str, Animal]"""
 
     def test_function_exists(self, student):
-        assert_has_function(student, "add_ingredients")
+        assert_has_function(student, "build_registry")
 
-    def test_returns_set(self, student):
-        result = student.add_ingredients(set(PANTRY), ["flour"])
-        assert isinstance(result, set), (
-            f"add_ingredients() must return a set, got {type(result).__name__}."
+    def test_returns_dict(self, student):
+        result = student.build_registry(RAW_DATA)
+        assert isinstance(result, dict), "build_registry() must return a dictionary."
+
+    def test_correct_number_of_animals(self, student):
+        result = student.build_registry(RAW_DATA)
+        assert len(result) == len(RAW_DATA), (
+            f"build_registry() should create {len(RAW_DATA)} Animal objects, got {len(result)}"
         )
 
-    def test_new_ingredients_present(self, student):
-        result = student.add_ingredients(set(PANTRY), ["flour", "sugar"])
-        assert "flour" in result and "sugar" in result, (
-            "add_ingredients() should add 'flour' and 'sugar' to the pantry set.\n"
-            f"  Your result: {result}"
+    def test_registry_values_are_animal_objects(self, student):
+        result = student.build_registry(RAW_DATA)
+        for name, animal in result.items():
+            assert hasattr(animal, "name") and hasattr(animal, "species"), (
+                f"Registry values must be Animal objects.\n"
+                f"  '{name}' has value of type {type(animal).__name__}"
+            )
+
+    def test_animal_data_parsed_correctly(self, student):
+        result = student.build_registry(RAW_DATA)
+        simba = result.get("Simba")
+        assert simba is not None, "Registry should contain 'Simba'."
+        assert simba.species == "lion", f"Simba should be a lion, got {simba.species}"
+        assert simba.age == 7, f"Simba should be 7 years old, got {simba.age}"
+        assert simba.origin == "Africa", f"Simba should be from Africa, got {simba.origin}"
+
+
+# ===========================================================================
+# analyze_registry()
+# ===========================================================================
+class TestAnalyzeRegistry:
+    """Tests for analyze_registry(registry) -> None"""
+
+    def test_function_exists(self, student):
+        assert_has_function(student, "analyze_registry")
+
+    def test_produces_output(self, student, capsys):
+        registry = student.build_registry(RAW_DATA)
+        student.analyze_registry(registry)
+        output = capsys.readouterr().out
+        assert len(output) > 0, "analyze_registry() should produce some output."
+        assert "8" in output, "Output should mention 8 animals."
+
+
+# ===========================================================================
+# group_by_species()   [Challenge]
+# ===========================================================================
+@pytest.mark.challenge
+class TestGroupBySpecies:
+    """Tests for group_by_species(registry) -> dict[str, list[Animal]]"""
+
+    def test_function_exists(self, student):
+        assert_has_function(student, "group_by_species")
+
+    def test_returns_dict(self, student):
+        registry = student.build_registry(RAW_DATA)
+        result = student.group_by_species(registry)
+        assert isinstance(result, dict), "group_by_species() must return a dictionary."
+
+    def test_groups_lions_correctly(self, student):
+        registry = student.build_registry(RAW_DATA)
+        result = student.group_by_species(registry)
+        lions = result.get("lion", [])
+        lion_names = {animal.name for animal in lions}
+        assert lion_names == {"Simba", "Kovu", "Nala"}, (
+            f"Lions should be Simba, Kovu, and Nala. Got: {lion_names}"
         )
 
-    def test_original_ingredients_preserved(self, student):
-        result = student.add_ingredients(set(PANTRY), ["flour"])
-        assert PANTRY.issubset(result), (
-            "add_ingredients() must keep the original pantry items — don't replace them.\n"
-            f"  Original pantry: {PANTRY}\n"
-            f"  Your result    : {result}"
-        )
-
-    def test_empty_extras_returns_unchanged(self, student):
-        pantry_copy = set(PANTRY)
-        result = student.add_ingredients(pantry_copy, [])
-        assert result == PANTRY, (
-            "add_ingredients() with an empty extras list should return the pantry unchanged.\n"
-            f"  Your result: {result}"
+    def test_groups_dolphins_correctly(self, student):
+        registry = student.build_registry(RAW_DATA)
+        result = student.group_by_species(registry)
+        dolphins = result.get("dolphin", [])
+        dolphin_names = {animal.name for animal in dolphins}
+        assert dolphin_names == {"Bubbles", "Splash"}, (
+            f"Dolphins should be Bubbles and Splash. Got: {dolphin_names}"
         )
